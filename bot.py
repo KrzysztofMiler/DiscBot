@@ -96,6 +96,36 @@ async def play(ctx,url: str):#zakładamy komende z linkiem
     nnazwa=nazwa.rsplit("-",2)#aby ładnie wyglądało do napisania
     await ctx.send(f"Odtwarzanie{nazwa}")
 
+@client.command(pass_context = True,aliases =['pa','pauza'])
+async def pause(ctx):
+    voice = get(client.voice_clients,guild =ctx.guild)
+
+    if voice and voice.is_playing():
+        voice.pause()
+        await ctx.send('Muzyka zpałzowana')
+    else:
+        await ctx.send('nie ma co pałzować')
+
+@client.command(pass_context = True,aliases =['r','rezume','res'])
+async def resume(ctx):
+    voice = get(client.voice_clients,guild =ctx.guild)
+
+    if voice and voice.is_paused():
+        voice.resume()
+        await ctx.send('Muzyka resume')
+    else:
+        await ctx.send('nie ma co resumować')
+
+@client.command(pass_context = True,aliases =['s'])
+async def stop(ctx):
+    voice = get(client.voice_clients,guild =ctx.guild)
+
+    if voice and voice.is_playing():
+        voice.stop()
+        await ctx.send('Muzyka zastopowana')
+    else:
+        await ctx.send('nie ma co stopować')
+
 
 token=open("token.txt")#plik z tokenem
 client.run(token.read())
