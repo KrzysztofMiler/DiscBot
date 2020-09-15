@@ -3,6 +3,7 @@ from discord.ext import commands
 from discord.utils import get
 import os
 import youtube_dl
+import shutil
 
 client=commands.Bot(command_prefix=';')
 
@@ -56,6 +57,52 @@ async def leave(ctx):
 
 @client.command(pass_context=True,aliases =['p'])
 async def play(ctx,url: str):#zakładamy komende z linkiem
+
+    def check_que():
+        queueInfile = os.path.isdir('./queue')
+        if queueInfile is True:
+            dir = os.path.abspath(os.path.realpath("queue"))
+            lenght = len(os.listdir(dir))
+            wQue = lenght -1
+            try:
+                queFile = os.listdir(dir)[0]
+            except :
+                print('nnie ma piosenek czyszcze que')
+                queues.clear()
+                return
+
+            queFile=os.path.isdir('./queue')#sprawdzam cz jescze dlaje nie mam
+            try:
+                queFolder = "./queue"
+                if queFile is True:
+                    shutil.rmtree(queFolder)
+                    print('rip stary folder que')
+            except:
+                print('nie ma folderu que')
+
+            mainLoc = os.path.dirname(os.path.realpath(__file__))
+            songPath = os.path.abspath(os.path.realpath('queue')+"\\"+queFile)
+            if lenght !=0:
+                print("w kolejce {wQue}")# na potem await ctx.send('w kolejce {wQue}') ale czy to dobry pomysł?
+                song_there=os.path.isfile("song.mp3")
+                if song_there:
+                    os.remove("song.mp3")
+                shutil.move(songPath,mainLoc)
+                for file in os.listdir('./'):
+                    if file.endswith('.mp3'):
+                        os.rename(file,'song.mp3')
+
+                voice.play(discord.FFmpegPCMAudio("song.mp3"), after=lambda e:check_que())
+                voice.source = discord.PCMVolumeTransformer(voice.source)
+                voice.source.voice=0.07#głośność piosenki jak gra bazowo (0-1) 1 są zniekształcenia
+            else:
+                queues.clear()
+                return
+        else:
+            queues.clear()
+            print('koniec kolejki')
+
+
     song_there = os.path.isfile("song.mp3")#jesli jest w dir
     
     try:
@@ -89,7 +136,7 @@ async def play(ctx,url: str):#zakładamy komende z linkiem
             print(f'zmiana nazwy {file}\n')
             os.rename(file,"song.mp3")#zmieniam nazwe pliku aby go odczytywać bez większych trudnosci
 
-    voice.play(discord.FFmpegPCMAudio("song.mp3"), after=lambda e:print(f'{nazwa} nie gra'))
+    voice.play(discord.FFmpegPCMAudio("song.mp3"), after=lambda e:check_que)
     voice.source = discord.PCMVolumeTransformer(voice.source)
     voice.source.voice=0.07#głośność piosenki jak gra bazowo (0-1) 1 są zniekształcenia
 
@@ -120,11 +167,49 @@ async def resume(ctx):
 async def stop(ctx):
     voice = get(client.voice_clients,guild =ctx.guild)
 
+    queues.clear()
+
     if voice and voice.is_playing():
         voice.stop()
         await ctx.send('Muzyka zastopowana')
     else:
         await ctx.send('nie ma co stopować')
+
+queues={}#pomocnicze do przechowania
+
+@client.command(pass_context = True,aliases =['que','q'])
+async def queue(ctx, url: str):
+    queueInfile=os.path.isdir('./queue')
+    if queueInfile is False:
+        os.mkdir('queue')
+    dir = os.path.abspath(os.path.realpath('queue'))#powinno sie dostac do que
+    num = len(os.listdir(dir))#ile w que
+    num +=1 #bo dodaje nowe
+    addQue = True
+    while addQue:#sprawdzam czy juz nie ma w kolejce
+        if num in queues:
+            num+=1
+        else:
+            addQue = False
+            queues[num] = num
+
+    quePath = os.path.abspath(os.path.realpath('queue')+f'\song{num}.%(ext)s'
+    )
+
+    ydl_opts = {
+        'format':'bestaudio/best',
+        'outtmpl':quePath,
+        'postprocessors':[{
+            'key': 'FFmpegExtractAudio',
+            'preferredcodec':'mp3',
+            'preferredquality':'192',#jest default wiec chyba ok??
+        }]
+    }    
+    with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+       print('download piosenk')
+       ydl.download([url])
+
+    await ctx.send('Dodano '+str(num)+' do kolejki')
 
 
 token=open("token.txt")#plik z tokenem
